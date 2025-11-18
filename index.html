@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>3D Viewer – Schliersee</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #111;
+            color: white;
+            overflow: hidden;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #ffffff15;
+            color: white;
+            border: 1px solid #ffffff22;
+            backdrop-filter: blur(6px);
+        }
+
+        button:hover {
+            background: #ffffff30;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            display: none;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ui">
+        <button onclick="loadModel('models/model1.glb')">Höhen</button>
+        <button onclick="loadModel('models/model2.glb')">Luftbildkarte</button>
+        <button onclick="loadModel('models/model3.glb')">Digitale Ortskarte</button>
+        <button onclick="loadModel('models/model4.glb')">Historische Karte</button>
+    </div>
+
+    <div id="loading">Lade Modell…</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let scene, camera, renderer, controls, currentModel;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);
+
+            camera = new THREE.PerspectiveCamera(
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                100000
+            );
+            camera.position.set(200, 200, 200);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            const light = new THREE.HemisphereLight(0xffffff, 0x222222, 1.5);
+            scene.add(light);
+
+            animate();
+        }
+
+        function loadModel(path) {
+            const loading = document.getElementById("loading");
+            loading.style.display = "block";
+
+            const loader = new THREE.GLTFLoader();
+
+            loader.load(
+                path,
+                gltf => {
+                    if (currentModel) scene.remove(currentModel);
+
+                    currentModel = gltf.scene;
+                    scene.add(currentModel);
+
+                    // Modell zentrieren
+                    const box = new THREE.Box3().setFromObject(currentModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    currentModel.position.sub(center);
+
+                    loading.style.display = "none";
+                },
+                xhr => {
+                    loading.textContent = `Lade… ${Math.round(
+                        (xhr.loaded / xhr.total) * 100
+                    )}%`;
+                },
+                error => {
+                    alert("Fehler beim Laden des Modells");
+                    loading.style.display = "none";
+                }
+            );
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener("resize", () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>
+
